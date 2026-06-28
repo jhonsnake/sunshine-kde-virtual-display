@@ -1,57 +1,47 @@
 #!/bin/bash
-# Create a virtual display on KDE Plasma 6 / Wayland and launch Sunshine on it.
+# Launch Sunshine for the connect-time virtual-display model.
 #
-# Sunshine reads `output_name` ONCE at process startup and caches it, so the
-# virtual output must exist AND its name must be in sunshine.conf BEFORE we exec
-# sunshine. The compositor-specific work is delegated to display-backend.sh.
-#
-# Backend is swappable via DISPLAY_BACKEND (krfb default, evdi fallback); the
-# matching capture method is selected automatically.
-
+# Unlike the MVP, this NO LONGER creates a virtual display at startup. The
+# display is created by sunshine-connect.sh when a client connects and torn
+# down by sunshine-disconnect.sh. Sunshine caches output_name (a string) at
+# startup and resolves the matching output when capture begins, so the
+# deterministic name Virtual-SunshineHeadless is written here and the output
+# is created later by the connect hook.
 set -u
-RES="${RES:-1920x1080}"
 LOG="$HOME/.local/share/sunshine-headless.log"
 CONF="$HOME/.config/sunshine/sunshine.conf"
+PHYS_FILE="$HOME/.local/share/sunshine-physical-outputs.list"
+HEADLESS_NAME="Virtual-SunshineHeadless"
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=display-backend.sh
 source "$DIR/display-backend.sh"
 
 mkdir -p "$(dirname "$LOG")"
-log "=== sunshine-start backend=$DISPLAY_BACKEND res=$RES ==="
+log "=== sunshine-start (KDE, connect-time display) backend=$DISPLAY_BACKEND ==="
 
-# --- Clean any leftover virtual display from a previous session -------------
+# --- Reconcile: recover from a disconnect hook that never ran ---------------
+# Re-enable any physical output left disabled by a crashed session and tear
+# down a stray virtual, so we never boot into a blind/headless state.
 destroy_virtual_display
-sleep 0.3
-
-# --- Create the virtual display ---------------------------------------------
-if ! create_virtual_display "$RES" "SunshineHeadless"; then
-    log "ERROR: could not create virtual display; launching sunshine on default output"
-    exec sunshine
+if [ -s "$PHYS_FILE" ]; then
+    while read -r name; do
+        [ -n "$name" ] && kscreen-doctor "output.$name.enable" >> "$LOG" 2>&1
+    done < "$PHYS_FILE"
+    rm -f "$PHYS_FILE"
+    log "reconcile: re-enabled physical outputs from previous session"
 fi
 
-HEADLESS="$(get_virtual_display_name)"
-log "virtual display ready: $HEADLESS"
-
-# --- Pick the capture method that matches the backend -----------------------
-# krfb output lives at the compositor level -> kms can't see it, use kwin.
-# evdi output is a real DRM connector       -> the normal kms backend works.
-case "$DISPLAY_BACKEND" in
-    evdi) CAPTURE=kms ;;
-    *)    CAPTURE=kwin ;;
-esac
-
-# --- Patch sunshine.conf BEFORE launching (output_name is cached at start) --
-sed -i "s/^output_name *=.*/output_name = $HEADLESS/" "$CONF"
+# --- Pin output_name + capture (output created later by the connect hook) ---
+sed -i "s/^output_name *=.*/output_name = $HEADLESS_NAME/" "$CONF"
 if grep -q '^capture *=' "$CONF"; then
-    sed -i "s/^capture *=.*/capture = $CAPTURE/" "$CONF"
+    sed -i "s/^capture *=.*/capture = kwin/" "$CONF"
 else
-    echo "capture = $CAPTURE" >> "$CONF"
+    echo "capture = kwin" >> "$CONF"
 fi
-log "sunshine.conf set: output_name=$HEADLESS capture=$CAPTURE"
+log "conf set: output_name=$HEADLESS_NAME capture=kwin"
 
-# --- Launch Sunshine --------------------------------------------------------
-# KWIN_DRM_NO_DIRECT_SCANOUT=1 prevents the Plasma 6 direct-scanout cropping
-# of fullscreen content seen on the client.
+# KWIN_DRM_NO_DIRECT_SCANOUT=1 prevents Plasma 6 fullscreen direct-scanout
+# cropping seen on the client.
 export KWIN_DRM_NO_DIRECT_SCANOUT=1
 exec sunshine
