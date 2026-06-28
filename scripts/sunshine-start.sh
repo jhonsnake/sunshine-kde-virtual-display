@@ -33,7 +33,11 @@ if [ -s "$PHYS_FILE" ]; then
 fi
 
 # --- Pin output_name + capture (output created later by the connect hook) ---
-sed -i "s/^output_name *=.*/output_name = $HEADLESS_NAME/" "$CONF"
+if grep -q '^output_name *=' "$CONF"; then
+    sed -i "s/^output_name *=.*/output_name = $HEADLESS_NAME/" "$CONF"
+else
+    echo "output_name = $HEADLESS_NAME" >> "$CONF"
+fi
 if grep -q '^capture *=' "$CONF"; then
     sed -i "s/^capture *=.*/capture = kwin/" "$CONF"
 else
