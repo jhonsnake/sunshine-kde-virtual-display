@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Sunshine Headless (KDE)
+Comment=Create the virtual display and launch Sunshine on login
+Exec=sh -c "exec \\$HOME/.local/bin/sunshine-start.sh"
+Icon=sunshine
+X-KDE-autostart-phase=2
+OnlyShowIn=KDE;
+Terminal=false
