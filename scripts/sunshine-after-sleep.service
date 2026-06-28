@@ -1,0 +1,13 @@
+[Unit]
+Description=Refresh display after resume (sunshine headless)
+After=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+
+[Service]
+Type=oneshot
+User=__USER__
+Environment=WAYLAND_DISPLAY=wayland-0
+Environment=XDG_RUNTIME_DIR=/run/user/__UID__
+ExecStart=/home/__USER__/.local/bin/sunshine-after-sleep.sh
+
+[Install]
+WantedBy=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
