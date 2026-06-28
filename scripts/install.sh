@@ -41,13 +41,17 @@ fi
 if systemctl is-active --quiet ufw; then
     info "Opening Sunshine ports in UFW (LAN only)"
     LAN="$(ip route | awk '/proto kernel/ && /src/ {print $1; exit}')"
-    sudo -A ufw allow from "$LAN" to any port 47984:48010 proto tcp comment 'Sunshine TCP'
-    sudo -A ufw allow from "$LAN" to any port 47998:48010 proto udp comment 'Sunshine UDP'
-    sudo -A ufw allow from "$LAN" to any port 5353 proto udp comment 'mDNS discovery'
+    if [ -z "$LAN" ]; then
+        warn "Could not detect LAN CIDR — skipping UFW rules (open them manually)"
+    else
+        sudo -A ufw allow from "$LAN" to any port 47984:48010 proto tcp comment 'Sunshine TCP'
+        sudo -A ufw allow from "$LAN" to any port 47998:48010 proto udp comment 'Sunshine UDP'
+        sudo -A ufw allow from "$LAN" to any port 5353 proto udp comment 'mDNS discovery'
+    fi
 fi
 
 info "Installing post-resume unit"
-sudo -A sed "s/__USER__/$USER/g; s/__UID__/$(id -u)/g" "$DIR"/scripts/sunshine-after-sleep.service \
+sed "s/__USER__/$USER/g; s/__UID__/$(id -u)/g" "$DIR"/scripts/sunshine-after-sleep.service \
   | sudo -A tee /etc/systemd/system/sunshine-after-sleep.service >/dev/null
 sudo -A systemctl daemon-reload
 sudo -A systemctl enable sunshine-after-sleep.service
