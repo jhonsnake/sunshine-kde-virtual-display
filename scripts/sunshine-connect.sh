@@ -36,21 +36,28 @@ fi
 log "connect: virtual ready $HEADLESS @ $RES"
 
 # --- 2. inhibit idle/sleep --------------------------------------------------
+# Kill any inhibitor left by a prior connect that never got a disconnect, so a
+# reconnect doesn't leak a permanent sleep block.
+[ -f "$INHIBIT_PIDFILE" ] && kill "$(cat "$INHIBIT_PIDFILE")" 2>/dev/null
 systemd-inhibit --what=idle:sleep:handle-lid-switch --who=sunshine \
     --why="remote streaming session" --mode=block sleep infinity \
     >/dev/null 2>&1 &
-echo $! > "$INHIBIT_PIDFILE"
+echo "$!" > "$INHIBIT_PIDFILE"
 
 # --- 3. go headless: record + disable physical outputs ----------------------
-kscreen-doctor -j | python3 -c "
+# Snapshot the currently-enabled physical outputs. On a reconnect the physical
+# output is already disabled, so this snapshot is empty — do NOT overwrite the
+# record from the first connect, or disconnect won't know what to re-enable.
+SNAP="$(kscreen-doctor -j | python3 -c "
 import sys,json
 for o in json.load(sys.stdin)['outputs']:
     if o.get('enabled') and o['name'] != '$HEADLESS':
         print(o['name'])
-" > "$PHYS_FILE"
+")"
+[ -n "$SNAP" ] && printf '%s\n' "$SNAP" > "$PHYS_FILE"
 
 while read -r name; do
     [ -n "$name" ] && kscreen-doctor "output.$name.disable" >> "$LOG" 2>&1
 done < "$PHYS_FILE"
 
-log "connect: headless on $HEADLESS, disabled [$(tr '\n' ' ' < "$PHYS_FILE")]"
+log "connect: headless on $HEADLESS, disabled [$(tr '\n' ' ' < "$PHYS_FILE" 2>/dev/null)]"

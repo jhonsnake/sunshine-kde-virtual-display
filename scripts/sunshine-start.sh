@@ -11,6 +11,7 @@ set -u
 LOG="$HOME/.local/share/sunshine-headless.log"
 CONF="$HOME/.config/sunshine/sunshine.conf"
 PHYS_FILE="$HOME/.local/share/sunshine-physical-outputs.list"
+INHIBIT_PIDFILE="$HOME/.local/share/sunshine-inhibit.pid"
 HEADLESS_NAME="Virtual-SunshineHeadless"
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -31,6 +32,9 @@ if [ -s "$PHYS_FILE" ]; then
     rm -f "$PHYS_FILE"
     log "reconcile: re-enabled physical outputs from previous session"
 fi
+# Release a stray idle/sleep inhibitor from a session that never disconnected.
+[ -f "$INHIBIT_PIDFILE" ] && kill "$(cat "$INHIBIT_PIDFILE")" 2>/dev/null
+rm -f "$INHIBIT_PIDFILE"
 
 # --- Pin output_name + capture (output created later by the connect hook) ---
 if grep -q '^output_name *=' "$CONF"; then
