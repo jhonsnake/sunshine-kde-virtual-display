@@ -175,7 +175,9 @@ Verified on KDE Plasma 6 Wayland (NVIDIA / nvenc):
   the virtual output without manual intervention.
 - Physical monitor is restored on disconnect before the virtual output is
   destroyed, so the host is never left without a display.
-- Post-S3 resume restores display state via `sunshine-after-sleep.sh`.
+
+Post-S3 resume recovery (`sunshine-after-sleep.sh`) is installed and enabled but
+not yet exercised through a real suspend/resume cycle.
 
 ## Known gotcha
 
