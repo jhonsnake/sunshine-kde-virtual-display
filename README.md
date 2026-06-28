@@ -184,6 +184,44 @@ not yet exercised through a real suspend/resume cycle.
 KWin direct scanout on Plasma 6 crops fullscreen content on the client. The
 launcher exports `KWIN_DRM_NO_DIRECT_SCANOUT=1` to avoid it.
 
+## Alternatives / prior art
+
+This isn't the first take on virtual-display streaming on Linux. The landscape
+and where this project fits:
+
+- **[Apollo](https://github.com/ClassicOldSong/Apollo)** — a Sunshine fork with a
+  built-in virtual display, automatic client resolution/framerate matching, and
+  HDR. Its virtual display is Windows-only (Linux planned).
+- **[Hermes / Apollo-Linux](https://github.com/MrOz59/Apollo-Linux)** — a full
+  streaming-host fork for Linux / KDE Wayland with virtual-display support via a
+  KMS or EVDI backend, and optional physical-monitor shutdown. A more complete
+  (and heavier) solution than this.
+- **[sunshine-virtual-monitor](https://github.com/Cynary/sunshine-virtual-monitor)**
+  — Windows PowerShell scripts that enable a virtual display driver and disable
+  the other monitors while streaming.
+- **[Nite's KDE Wayland guide](https://www.nite07.com/en/posts/kde-virtual-display-sunshine/)**
+  — uses the same core combo this project does (`krfb-virtualmonitor` +
+  `capture = kwin`), written up as a manual how-to with a persistent virtual output.
+
+What this project does differently:
+
+- **Runs on stock Sunshine — no server fork.** Apollo and Hermes replace the
+  streaming server; this is just scripts on top of upstream Sunshine, and it
+  uninstalls cleanly.
+- **No kernel module.** `krfb-virtualmonitor` is userspace; EVDI/KMS backends need
+  a kernel module recompiled per kernel.
+- **Adopts the client's resolution** on KDE Wayland (`SUNSHINE_CLIENT_WIDTH/HEIGHT`),
+  which the guide and the Windows scripts don't.
+- **Full per-session lifecycle:** the virtual display is created on connect and
+  destroyed on disconnect, the physical output is re-enabled first on teardown,
+  plus reconnect handling and post-resume recovery.
+
+Trade-offs to be aware of:
+
+- **No HDR** — `krfb-virtualmonitor` doesn't expose it; EVDI/KMS-based setups can.
+- **Stability** — `krfb-virtualmonitor` can crash in some headless/remote cases;
+  the EVDI backend (`DISPLAY_BACKEND=evdi`) is an option if you hit that.
+
 ## Roadmap
 
 - **Physical monitor preference GUI:** a small settings UI to let the user
