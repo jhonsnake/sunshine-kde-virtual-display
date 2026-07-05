@@ -39,7 +39,7 @@ _kscreen_output_names() {
 # ===========================================================================
 
 _krfb_create() {
-    local res="$1" name_hint="$2"
+    local res="$1" name_hint="$2" fps="${3:-60}"
     # Snapshot existing outputs so we can identify the *new* one afterwards —
     # the assigned name isn't predictable, so diffing the output list is the
     # robust way to discover it.
@@ -65,8 +65,19 @@ _krfb_create() {
         log "ERROR: krfb-virtualmonitor did not produce a new output"
         return 1
     fi
+
+    # Extract resolution components for custom mode
+    local w h mhz
+    w="$(echo "$res" | cut -d'x' -f1)"
+    h="$(echo "$res" | cut -d'x' -f2)"
+    mhz=$((fps * 1000))
+
+    # Add custom mode and apply it (e.g. 120Hz = 120000 mHz)
+    kscreen-doctor "output.$new.addCustomMode.$w.$h.$mhz.full" >> "$LOG" 2>&1
+    kscreen-doctor "output.$new.mode.${res}@${fps}" >> "$LOG" 2>&1
+
     echo "$new" > "$VDISPLAY_NAMEFILE"
-    log "created virtual output: $new (${res})"
+    log "created virtual output: $new (${res}@${fps}Hz)"
 }
 
 _krfb_destroy() {
@@ -79,7 +90,7 @@ _krfb_destroy() {
 # ===========================================================================
 
 _evdi_create() {
-    local res="$1"
+    local res="$1" name_hint="$2" fps="${3:-60}"
     local before after new
     before="$(_kscreen_output_names | sort)"
 
@@ -100,9 +111,9 @@ _evdi_create() {
         return 1
     fi
     # Apply the requested mode on the real DRM connector.
-    kscreen-doctor "output.$new.mode.$res" >> "$LOG" 2>&1
+    kscreen-doctor "output.$new.mode.${res}@${fps}" >> "$LOG" 2>&1
     echo "$new" > "$VDISPLAY_NAMEFILE"
-    log "created EVDI output: $new (${res})"
+    log "created EVDI output: $new (${res}@${fps}Hz)"
 }
 
 _evdi_destroy() {

@@ -13,14 +13,15 @@ PHYS_FILE="$HOME/.local/share/sunshine-physical-outputs.list"
 INHIBIT_PIDFILE="$HOME/.local/share/sunshine-inhibit.pid"
 
 W="${SUNSHINE_CLIENT_WIDTH:-1920}"; H="${SUNSHINE_CLIENT_HEIGHT:-1080}"
+FPS="${SUNSHINE_CLIENT_FPS:-60}"
 RES="${W}x${H}"
-log "connect: client requested ${RES} @ ${SUNSHINE_CLIENT_FPS:-?}fps"
+log "connect: client requested ${RES} @ ${FPS}fps"
 
 # --- 1. create virtual at client resolution --------------------------------
 destroy_virtual_display; sleep 0.3
-if ! create_virtual_display "$RES" "SunshineHeadless"; then
+if ! create_virtual_display "$RES" "SunshineHeadless" "$FPS"; then
     log "connect: ${RES} failed, retrying at 1920x1080"
-    create_virtual_display "1920x1080" "SunshineHeadless" || {
+    create_virtual_display "1920x1080" "SunshineHeadless" "60" || {
         log "connect ERROR: no virtual display; leaving physical ON"; exit 0; }
 fi
 HEADLESS="$(get_virtual_display_name)"
