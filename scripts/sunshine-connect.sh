@@ -26,8 +26,8 @@ fi
 HEADLESS="$(get_virtual_display_name)"
 
 # Ensure the virtual is actually enabled BEFORE blinding the physical output.
-_is_enabled() { kscreen-doctor -j | python3 -c \
-  "import sys,json;sys.exit(0 if any(o['name']=='$1' and o.get('enabled') for o in json.load(sys.stdin)['outputs']) else 1)"; }
+_is_enabled() { kscreenctl list-outputs --json | python3 -c \
+  "import sys,json;sys.exit(0 if any(o['name']=='$1' and o.get('enabled') for o in json.load(sys.stdin)) else 1)"; }
 _is_enabled "$HEADLESS" || { kscreen-doctor "output.$HEADLESS.enable" >> "$LOG" 2>&1; sleep 0.5; }
 if ! _is_enabled "$HEADLESS"; then
     log "connect ERROR: virtual $HEADLESS not enabled; leaving physical ON"
